@@ -22,6 +22,7 @@ from deepspec.eval.dspark.draft_ops import (
 from deepspec.modeling.dspark.common import extract_context_feature
 from deepspec.modeling.dspark.gemma4 import Gemma4DSparkModel
 from deepspec.modeling.dspark.qwen3 import Qwen3DSparkModel
+from deepspec.modeling.dspark.qwen3_5 import Qwen3_5DSparkModel
 from deepspec.utils import jsonable
 
 
@@ -223,3 +224,31 @@ class Qwen3DSparkEvaluator(BaseEvaluator):
 
 class Gemma4DSparkEvaluator(Qwen3DSparkEvaluator):
     draft_model_cls = Gemma4DSparkModel
+
+
+class Qwen3_5DSparkEvaluator(Qwen3DSparkEvaluator):
+    """Evaluator for DSpark draft models targeting Qwen3.5 (multimodal VLM)."""
+
+    EVAL_ATTN_IMPLEMENTATION = "eager"
+    draft_model_cls = Qwen3_5DSparkModel
+
+    def build_models(self):
+        from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5ForConditionalGeneration
+
+        # Load multimodal model for text-only speculative-decoding evaluation.
+        target_model = Qwen3_5ForConditionalGeneration.from_pretrained(
+            self.args.target_name_or_path,
+            dtype=torch.bfloat16,
+            attn_implementation=self.EVAL_ATTN_IMPLEMENTATION,
+        ).to(device=self.device).eval()
+
+        draft_model = self.draft_model_cls.from_pretrained(
+            self.args.draft_name_or_path,
+            dtype=torch.bfloat16,
+            attn_implementation=self.EVAL_ATTN_IMPLEMENTATION,
+        ).to(self.device).eval()
+
+        from deepspec.eval.base_evaluator import assert_no_final_target_layer
+        assert_no_final_target_layer(target_model, draft_model.target_layer_ids)
+        tokenizer = AutoTokenizer.from_pretrained(self.args.target_name_or_path)
+        return target_model, draft_model, tokenizer

@@ -82,7 +82,14 @@ def create_dspark_attention_mask(
     seq_len: int,
     block_size: int,
     device: torch.device,
+    use_block_mask: bool = True,
 ):
+    """Build the DSpark attention mask.
+
+    When ``use_block_mask=True`` (default) returns a flex_attention BlockMask.
+    When ``use_block_mask=False`` returns a float additive mask tensor of shape
+    [bsz, 1, q_len, kv_len] suitable for eager/sdpa attention.
+    """
     def dspark_mask_mod(b, h, q_idx, kv_idx):
         del h
         q_block_id = q_idx // block_size
@@ -96,14 +103,39 @@ def create_dspark_attention_mask(
         return (mask_context | mask_draft) & is_valid_block
 
     bsz, num_blocks = anchor_positions.shape
-    return create_block_mask(
-        dspark_mask_mod,
-        B=bsz,
-        H=None,
-        Q_LEN=num_blocks * block_size,
-        KV_LEN=seq_len + num_blocks * block_size,
-        device=device,
-    )
+    q_len = num_blocks * block_size
+    kv_len = seq_len + q_len
+
+    if use_block_mask:
+        return create_block_mask(
+            dspark_mask_mod,
+            B=bsz,
+            H=None,
+            Q_LEN=q_len,
+            KV_LEN=kv_len,
+            device=device,
+        )
+
+    # Build a dense boolean mask [bsz, q_len, kv_len] and convert to additive float mask.
+    q_idx = torch.arange(q_len, device=device)          # [q_len]
+    kv_idx = torch.arange(kv_len, device=device)         # [kv_len]
+    q_block_ids = q_idx // block_size                    # [q_len]
+    anchor_pos_2d = anchor_positions[:, q_block_ids]     # [bsz, q_len]
+    valid_block_2d = block_keep_mask[:, q_block_ids]     # [bsz, q_len]
+    kv_idx_row = kv_idx.unsqueeze(0)                     # [1, kv_len]
+
+    is_context = kv_idx_row < seq_len                    # [1, kv_len]
+    mask_context = is_context & (kv_idx_row < anchor_pos_2d.unsqueeze(2))  # [bsz, q_len, kv_len]
+
+    is_draft = kv_idx_row >= seq_len                     # [1, kv_len]
+    kv_block_ids = ((kv_idx_row - seq_len).clamp(min=0)) // block_size  # [1, kv_len]
+    mask_draft = is_draft & (q_block_ids.unsqueeze(0).unsqueeze(-1) == kv_block_ids)  # [bsz, q_len, kv_len]
+
+    bool_mask = (mask_context | mask_draft) & valid_block_2d.unsqueeze(2)  # [bsz, q_len, kv_len]
+    # Additive mask: 0 where attention is allowed, -inf where masked out
+    float_mask = torch.zeros(bsz, 1, q_len, kv_len, device=device, dtype=torch.float32)
+    float_mask.masked_fill_(~bool_mask.unsqueeze(1), float("-inf"))
+    return float_mask
 
 
 def build_anchor_candidate_mask(
@@ -288,7 +320,7 @@ def create_noise_embed(
     )
     noise_ids[flat_batch_idx, block_starts] = torch.where(
         block_keep_mask,
-        anchor_tokens,
+        anchor_tokens.long(),
         torch.tensor(mask_token_id, dtype=torch.long, device=device),
     )
     return embed_tokens(noise_ids)

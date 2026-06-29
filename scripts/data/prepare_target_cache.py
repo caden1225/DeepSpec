@@ -6,7 +6,7 @@ import os
 import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader, Subset
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoConfig, AutoModel, AutoTokenizer
 
 from deepspec.data import ConversationCollator
 from deepspec.data.target_cache_dataset import (
@@ -60,12 +60,16 @@ def _get_target_backbone(target_model):
         if hasattr(target_model, "model") and hasattr(target_model.model, "language_model"):
             return target_model.model.language_model
         assert False, "Gemma4 target model must expose a text language_model."
+    if model_type == "qwen3_5":
+        # Multimodal Qwen3.5: text backbone is at model.language_model
+        if hasattr(target_model, "model") and hasattr(target_model.model, "language_model"):
+            return target_model.model.language_model
     return getattr(target_model, "model", target_model)
 
 
 def _get_target_hidden_size(target_model) -> int:
     model_type = str(target_model.config.model_type)
-    if model_type in ("gemma4", "gemma4_unified"):
+    if model_type in ("gemma4", "gemma4_unified", "qwen3_5"):
         return int(target_model.config.text_config.hidden_size)
     return int(target_model.config.hidden_size)
 
@@ -90,13 +94,15 @@ def run_target_forward_with_hooks(
     backbone = _get_target_backbone(target_model)
     layer_modules = backbone.layers
     target_layer_ids = [int(layer_id) for layer_id in target_layer_ids]
+    # Hook the last backbone layer to get last_hidden_state when the model
+    # doesn't expose it directly (e.g. Qwen3.5 ForConditionalGeneration).
+    _LAST_LAYER_KEY = "__last_layer__"
     captured_hidden_states = {}
     handles = []
 
-    def capture_layer(layer_id: int):
+    def capture_layer(layer_id):
         def hook(_module, _inputs, output):
             captured_hidden_states[layer_id] = _get_hook_tensor(output).detach()
-
         return hook
 
     try:
@@ -110,6 +116,13 @@ def run_target_forward_with_hooks(
             handles.append(
                 layer_modules[layer_id].register_forward_hook(capture_layer(layer_id))
             )
+        # Always hook the final backbone layer to capture last_hidden_state
+        final_layer_idx = len(layer_modules) - 1
+        handles.append(
+            layer_modules[final_layer_idx].register_forward_hook(
+                capture_layer(_LAST_LAYER_KEY)
+            )
+        )
 
         with torch.no_grad():
             target_output = target_model(
@@ -118,7 +131,15 @@ def run_target_forward_with_hooks(
                 output_hidden_states=False,
                 use_cache=False,
             )
-            target_last_hidden_states = target_output.last_hidden_state.detach()
+            # Prefer model output's last_hidden_state; fall back to hooked final layer.
+            if hasattr(target_output, "last_hidden_state") and target_output.last_hidden_state is not None:
+                target_last_hidden_states = target_output.last_hidden_state.detach()
+            else:
+                # Apply backbone norm if available (e.g. Qwen3.5 has norm after layers)
+                raw = captured_hidden_states[_LAST_LAYER_KEY]
+                if hasattr(backbone, "norm") and backbone.norm is not None:
+                    raw = backbone.norm(raw)
+                target_last_hidden_states = raw
             target_hidden_states = torch.cat(
                 [captured_hidden_states[layer_id] for layer_id in target_layer_ids],
                 dim=-1,
@@ -251,11 +272,25 @@ def main(local_rank: int):
     tokenizer = AutoTokenizer.from_pretrained(
         config.model.target_model_name_or_path,
     )
-    target_model = AutoModel.from_pretrained(
-        config.model.target_model_name_or_path,
-        dtype=torch.bfloat16,
-        attn_implementation="sdpa",
-    ).to(device=device).eval()
+    # Qwen3.5 is a multimodal model whose checkpoint keys live under
+    # model.language_model.*; AutoModel loads Qwen3_5Model which expects
+    # model.* keys → use the ForConditionalGeneration class directly.
+    # Also, GatedDeltaNet (linear attention) doesn't support sdpa/flash.
+    _target_raw_cfg = AutoConfig.from_pretrained(config.model.target_model_name_or_path)
+    if str(_target_raw_cfg.model_type) == "qwen3_5":
+        from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5ForConditionalGeneration
+        target_model = Qwen3_5ForConditionalGeneration.from_pretrained(
+            config.model.target_model_name_or_path,
+            torch_dtype=torch.bfloat16,
+            attn_implementation="eager",
+        ).to(device=device).eval()
+    else:
+        _attn_impl = "sdpa"
+        target_model = AutoModel.from_pretrained(
+            config.model.target_model_name_or_path,
+            dtype=torch.bfloat16,
+            attn_implementation=_attn_impl,
+        ).to(device=device).eval()
     target_hidden_size = _get_target_hidden_size(target_model)
     train_collator = ConversationCollator(
         tokenizer=tokenizer,

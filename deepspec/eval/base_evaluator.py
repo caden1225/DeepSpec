@@ -340,16 +340,18 @@ def generate_decoding_sample(
         device=device,
     )
     position_ids = torch.arange(output_ids.shape[1], device=device).unsqueeze(0)
-    past_key_values_target = DynamicCache()
 
     output = target_model(
         input_ids=input_ids,
         position_ids=position_ids[:, :num_input_tokens],
-        past_key_values=past_key_values_target,
+        past_key_values=None,
         use_cache=True,
         output_hidden_states=True,
         logits_to_keep=1,
     )
+    # Use the cache the model initialized (handles hybrid models like Qwen3.5 that need
+    # a config-aware cache with LinearAttention layer support).
+    past_key_values_target = output.past_key_values
 
     output_ids[:, :num_input_tokens] = input_ids
     output_ids[:, num_input_tokens : num_input_tokens + 1] = sample_from_probs(

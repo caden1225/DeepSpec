@@ -107,7 +107,7 @@ def _collect_local_terms(
         loss_decay_gamma=loss_decay_gamma,
     )
     flat_logits = draft_logits.reshape(-1, vocab_size)
-    flat_targets = target_ids.reshape(-1)
+    flat_targets = target_ids.reshape(-1).long()
     flat_weights = loss_weight_mask.reshape(-1)
     loss_per_token = F.cross_entropy(flat_logits, flat_targets, reduction="none")
     ce_loss_num = (loss_per_token * flat_weights).sum()
@@ -265,7 +265,7 @@ def compute_dspark_loss(
         loss_decay_gamma=loss_decay_gamma,
         l1_loss_alpha=float(l1_loss_alpha),
     )
-    world_size = dist.get_world_size()
+    world_size = dist.get_world_size() if dist.is_initialized() else 1
     global_denominators = _all_reduce_loss_denominators(
         loss_terms,
         world_size=world_size,
