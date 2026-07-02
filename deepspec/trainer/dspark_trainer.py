@@ -92,4 +92,5 @@ class Qwen3_5DSparkTrainer(Qwen3DSparkTrainer):
         )
         del target_model
         torch.cuda.empty_cache()
+        draft_model.gradient_checkpointing = True
         return draft_model, tokenizer

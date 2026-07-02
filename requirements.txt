@@ -15,4 +15,5 @@ prettytable==3.17.0
 
 # Data preparation dependencies.
 datasets==4.8.5
+modelscope>=1.34.0
 openai==2.6.1

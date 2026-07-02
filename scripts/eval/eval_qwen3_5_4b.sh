@@ -12,6 +12,7 @@ target_name_or_path=/storage/caden/models/Qwen3_5-4B
 # Training writes checkpoints under ~/checkpoints/deepspec/dspark_block8_qwen3_5_4b/step_*
 draft_name_or_path=${HOME}/checkpoints/deepspec/dspark_block8_qwen3_5_4b/step_latest
 
-python eval.py \
+PYTHON_BIN=${PYTHON_BIN:-python}
+"${PYTHON_BIN}" eval.py \
     --target_name_or_path "${target_name_or_path}" \
     --draft_name_or_path "${draft_name_or_path}"

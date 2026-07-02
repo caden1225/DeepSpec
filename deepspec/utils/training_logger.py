@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Optional
 
@@ -6,19 +7,42 @@ from torch.utils.tensorboard import SummaryWriter
 from deepspec.utils import ensure_dir, is_global_main_process, print_on_global_main
 from deepspec.utils.metrics import add_metric, flush, reset
 
+try:
+    import wandb as _wandb
+    _WANDB_AVAILABLE = True
+except ImportError:
+    _WANDB_AVAILABLE = False
+
 
 _writer: Optional[SummaryWriter] = None
 _logging_steps: int = 1
 _session_start_wall: Optional[float] = None
 _session_start_step: int = 0
+_wandb_enabled: bool = False
 
 
-def init(*, logging_steps: int, tensorboard_dir: Optional[str] = None) -> None:
-    global _writer, _logging_steps
+def init(
+    *,
+    logging_steps: int,
+    tensorboard_dir: Optional[str] = None,
+    wandb_project: Optional[str] = None,
+    wandb_name: Optional[str] = None,
+    wandb_config: Optional[dict] = None,
+) -> None:
+    global _writer, _logging_steps, _wandb_enabled
     _logging_steps = int(logging_steps)
-    if tensorboard_dir is not None and is_global_main_process():
-        ensure_dir(tensorboard_dir)
-        _writer = SummaryWriter(tensorboard_dir)
+    if is_global_main_process():
+        if tensorboard_dir is not None:
+            ensure_dir(tensorboard_dir)
+            _writer = SummaryWriter(tensorboard_dir)
+        if _WANDB_AVAILABLE and wandb_project is not None and os.environ.get("WANDB_DISABLED", "").lower() not in ("1", "true"):
+            _wandb.init(
+                project=wandb_project,
+                name=wandb_name,
+                config=wandb_config or {},
+                resume="allow",
+            )
+            _wandb_enabled = True
 
 
 def start_session(*, global_step: int) -> None:
@@ -57,17 +81,21 @@ def on_optimizer_step(
 
 
 def close() -> None:
-    global _writer
+    global _writer, _wandb_enabled
     if _writer is not None:
         _writer.close()
         _writer = None
+    if _wandb_enabled and _WANDB_AVAILABLE:
+        _wandb.finish()
+        _wandb_enabled = False
 
 
 def _write_scalars(summary, *, global_step: int) -> None:
-    if _writer is None:
-        return
-    for key, value in summary.items():
-        _writer.add_scalar(key, value, global_step)
+    if _writer is not None:
+        for key, value in summary.items():
+            _writer.add_scalar(key, value, global_step)
+    if _wandb_enabled and _WANDB_AVAILABLE:
+        _wandb.log({k: float(v) for k, v in summary.items()}, step=global_step)
 
 
 def _print_summary(

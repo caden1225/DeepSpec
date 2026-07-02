@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import json
+import os
 from pathlib import Path
 
 
 DEFAULT_DATASET_NAME = "mlabonne/open-perfectblend"
+DEFAULT_MODELSCOPE_DATASET_NAME = "AI-ModelScope/open-perfectblend"
 DEFAULT_TRAIN_OUTPUT_PATH = Path("cache/dataset/perfectblend_train.jsonl")
 DEFAULT_TEST_OUTPUT_DIR = Path("eval_datasets")
 DEFAULT_TEST_OUTPUT_NAME = "perfectblend.jsonl"
@@ -23,9 +26,25 @@ def parse_args() -> argparse.Namespace:
         description="Download PerfectBlend and split it into train and eval JSONL files."
     )
     parser.add_argument(
+        "--source",
+        choices=("huggingface", "modelscope"),
+        default="huggingface",
+        help="Dataset hub to download from.",
+    )
+    parser.add_argument(
         "--dataset-name",
         default=DEFAULT_DATASET_NAME,
-        help="Hugging Face dataset name.",
+        help="Hugging Face dataset name (used when --source=huggingface).",
+    )
+    parser.add_argument(
+        "--modelscope-dataset-name",
+        default=DEFAULT_MODELSCOPE_DATASET_NAME,
+        help="ModelScope dataset id (used when --source=modelscope).",
+    )
+    parser.add_argument(
+        "--modelscope-cache-dir",
+        default=None,
+        help="Optional ModelScope download cache directory.",
     )
     parser.add_argument(
         "--split",
@@ -104,7 +123,7 @@ def add_index(row: dict, idx: int) -> dict:
     return row
 
 
-def load_source_dataset(args: argparse.Namespace):
+def load_source_dataset_huggingface(args: argparse.Namespace):
     from datasets import load_dataset
 
     dataset = load_dataset(args.dataset_name, split=args.split)
@@ -112,6 +131,58 @@ def load_source_dataset(args: argparse.Namespace):
         dataset = dataset.select(range(args.sample_size))
     dataset = dataset.map(add_index, with_indices=True)
     return dataset
+
+
+def load_source_dataset_modelscope(args: argparse.Namespace):
+    from datasets import concatenate_datasets, load_dataset
+    from modelscope.hub.snapshot_download import snapshot_download
+
+    print(f"Downloading dataset from ModelScope: {args.modelscope_dataset_name}")
+    download_kwargs = {
+        "repo_type": "dataset",
+    }
+    if args.modelscope_cache_dir is not None:
+        download_kwargs["cache_dir"] = str(args.modelscope_cache_dir)
+    cache_dir = snapshot_download(args.modelscope_dataset_name, **download_kwargs)
+    parquet_files = sorted(glob.glob(os.path.join(cache_dir, "data", "train-*.parquet")))
+    if not parquet_files:
+        raise FileNotFoundError(
+            f"No parquet shards found under {cache_dir}/data. "
+            f"ModelScope cache may be incomplete."
+        )
+    print(f"ModelScope cache: {cache_dir}")
+    print(f"Found {len(parquet_files)} parquet shard(s).")
+
+    shards = []
+    collected = 0
+    for parquet_file in parquet_files:
+        shard = load_dataset("parquet", data_files=parquet_file, split="train")
+        if args.sample_size is None:
+            shards.append(shard)
+            continue
+        need = args.sample_size - collected
+        if need <= 0:
+            break
+        if len(shard) <= need:
+            shards.append(shard)
+            collected += len(shard)
+        else:
+            shards.append(shard.select(range(need)))
+            collected += need
+            break
+
+    if not shards:
+        raise ValueError("No dataset rows loaded from ModelScope parquet shards.")
+    dataset = shards[0] if len(shards) == 1 else concatenate_datasets(shards)
+    print(f"Loaded {len(dataset)} rows from ModelScope.")
+    dataset = dataset.map(add_index, with_indices=True)
+    return dataset
+
+
+def load_source_dataset(args: argparse.Namespace):
+    if args.source == "modelscope":
+        return load_source_dataset_modelscope(args)
+    return load_source_dataset_huggingface(args)
 
 
 def normalize_conversations(row: dict) -> dict:

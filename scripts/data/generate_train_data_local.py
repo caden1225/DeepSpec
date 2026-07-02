@@ -75,6 +75,13 @@ def build_prompt(tokenizer, conversations: list[dict], disable_thinking: bool) -
     )
 
 
+def _local_model_kwargs(model_path: str) -> dict:
+    offline = os.environ.get("HF_HUB_OFFLINE", os.environ.get("TRANSFORMERS_OFFLINE", ""))
+    if os.path.isdir(model_path) and offline.lower() in ("1", "true"):
+        return {"local_files_only": True}
+    return {}
+
+
 def main() -> None:
     args = parse_args()
     Path(args.output_file_path).parent.mkdir(parents=True, exist_ok=True)
@@ -88,8 +95,11 @@ def main() -> None:
         return
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    local_kwargs = _local_model_kwargs(args.model)
     print(f"Loading model from {args.model} on {device}...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
+    if local_kwargs.get("local_files_only"):
+        print("HF_HUB_OFFLINE=1: loading target model from local files only.")
+    tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left", **local_kwargs)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -97,11 +107,11 @@ def main() -> None:
     try:
         from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5ForConditionalGeneration
         model = Qwen3_5ForConditionalGeneration.from_pretrained(
-            args.model, torch_dtype=torch.bfloat16, device_map="auto",
+            args.model, torch_dtype=torch.bfloat16, device_map="auto", **local_kwargs,
         ).eval()
     except Exception:
         model = AutoModelForCausalLM.from_pretrained(
-            args.model, torch_dtype=torch.bfloat16, device_map="auto",
+            args.model, torch_dtype=torch.bfloat16, device_map="auto", **local_kwargs,
         ).eval()
 
     gen_config = GenerationConfig(

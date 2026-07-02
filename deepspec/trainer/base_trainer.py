@@ -160,9 +160,13 @@ class BaseTrainer:
         self.next_micro_step = 0
 
         if is_global_main_process(): ensure_dir(self.checkpoint_dir_root)
+        wandb_project = getattr(self.args.logging, "wandb_project", None)
         training_logger.init(
             logging_steps=int(self.args.logging.logging_steps),
             tensorboard_dir=self.args.logging.tensorboard_dir,
+            wandb_project=wandb_project,
+            wandb_name=getattr(self.args.logging, "wandb_name", None),
+            wandb_config=vars(self.args) if wandb_project else None,
         )
 
         self.draft_model, self.tokenizer = self.build_models()

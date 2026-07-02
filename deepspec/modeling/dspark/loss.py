@@ -57,6 +57,68 @@ def _compute_local_probabilistic_stats(
     return tau_prob_sum, pos_accept_sums
 
 
+_L1_VOCAB_CHUNK = 8192
+_L1_ANCHOR_CHUNK = 8
+
+
+def _accumulate_tv(
+    draft_logits: torch.Tensor,
+    target_logits: torch.Tensor,
+    *,
+    saved_probs: Optional[torch.Tensor] = None,
+    saved_signs: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    bsz, num_anchors, block_size, vocab_size = draft_logits.shape
+    device, orig_dtype = draft_logits.device, draft_logits.dtype
+    tv = torch.zeros(bsz, num_anchors, block_size, device=device, dtype=torch.float32)
+    for a in range(0, num_anchors, _L1_ANCHOR_CHUNK):
+        a_end = min(a + _L1_ANCHOR_CHUNK, num_anchors)
+        dl = draft_logits[:, a:a_end].float()
+        tl = target_logits[:, a:a_end].float()
+        lse_d = torch.logsumexp(dl, dim=-1, keepdim=True)
+        lse_t = torch.logsumexp(tl, dim=-1, keepdim=True)
+        for v in range(0, vocab_size, _L1_VOCAB_CHUNK):
+            p = torch.exp(dl[..., v : v + _L1_VOCAB_CHUNK] - lse_d)
+            q = torch.exp(tl[..., v : v + _L1_VOCAB_CHUNK] - lse_t)
+            diff = p - q
+            tv[:, a:a_end] += diff.abs_().sum(dim=-1)
+            if saved_probs is not None:
+                saved_probs[:, a:a_end, :, v : v + _L1_VOCAB_CHUNK] = p.to(orig_dtype)
+                saved_signs[:, a:a_end, :, v : v + _L1_VOCAB_CHUNK] = diff.sign_().to(torch.int8)
+        del dl, tl, lse_d, lse_t
+    return tv.mul_(0.5)
+
+
+class _TVDistanceFunction(torch.autograd.Function):
+    """Chunked TV distance; backward stores compact p and sign(p-q) only."""
+
+    @staticmethod
+    def forward(ctx, draft_logits, target_logits):
+        bsz, num_anchors, block_size, vocab_size = draft_logits.shape
+        device = draft_logits.device
+        saved_probs = torch.empty_like(draft_logits)
+        saved_signs = torch.empty(
+            bsz, num_anchors, block_size, vocab_size, device=device, dtype=torch.int8
+        )
+        with torch.no_grad():
+            tv = _accumulate_tv(
+                draft_logits, target_logits, saved_probs=saved_probs, saved_signs=saved_signs
+            )
+        ctx.save_for_backward(saved_probs, saved_signs)
+        return tv
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        saved_probs, saved_signs = ctx.saved_tensors
+        # weighted_sign_sum[bsz, N, B] = sum_v sign(p_v - q_v) * p_v
+        p_f = saved_probs.float()
+        s_f = saved_signs.float()
+        weighted_sign_sum = (s_f * p_f).sum(dim=-1, keepdim=True)
+        # grad wrt draft_logits: 0.5 * p * (sign - weighted_sign_sum)
+        grad = (0.5 * p_f * (s_f - weighted_sign_sum)) * grad_output.unsqueeze(-1)
+        return grad.to(saved_probs.dtype), None
+
+
 def _compute_accept_rate_3d(
     *,
     outputs: DSparkForwardOutput,
@@ -64,10 +126,9 @@ def _compute_accept_rate_3d(
 ) -> Optional[torch.Tensor]:
     if aligned_target_logits is None:
         return None
-    draft_probs = torch.softmax(outputs.draft_logits.float(), dim=-1)
-    target_probs = torch.softmax(aligned_target_logits.float(), dim=-1)
-    accept_rate_3d = 1.0 - 0.5 * (draft_probs - target_probs).abs().sum(dim=-1)
-    return accept_rate_3d.clamp_(0.0, 1.0)
+    with torch.no_grad():
+        tv = _accumulate_tv(outputs.draft_logits, aligned_target_logits)
+    return (1.0 - tv).clamp_(0.0, 1.0)
 
 
 def _compute_local_l1_term(
@@ -79,9 +140,7 @@ def _compute_local_l1_term(
     zero = outputs.draft_logits.new_zeros((), dtype=torch.float32)
     if aligned_target_logits is None:
         return zero, zero
-    draft_probs = torch.softmax(outputs.draft_logits.float(), dim=-1)
-    target_probs = torch.softmax(aligned_target_logits.float(), dim=-1)
-    l1_dist_per_token = (draft_probs - target_probs).abs().sum(dim=-1)
+    l1_dist_per_token = _TVDistanceFunction.apply(outputs.draft_logits, aligned_target_logits) * 2
     l1_loss_num = (l1_dist_per_token * loss_weight_mask).sum()
     l1_loss_den = loss_weight_mask.sum()
     return l1_loss_num, l1_loss_den

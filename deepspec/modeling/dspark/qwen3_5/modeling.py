@@ -278,6 +278,8 @@ class Qwen3_5DSparkModel(Qwen3_5PreTrainedModel):
         self.mask_token_id = config.mask_token_id
         self.num_anchors = int(config.num_anchors)
 
+        self.gradient_checkpointing = False
+
         self.markov_head = build_markov_head(config)
 
         self.enable_confidence_head = bool(config.enable_confidence_head)
@@ -395,7 +397,7 @@ class Qwen3_5DSparkModel(Qwen3_5PreTrainedModel):
         # Qwen3.5 rotary_emb expects (x, position_ids) where x provides device/dtype
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
         for layer in self.layers:
-            hidden_states = layer(
+            layer_kwargs = dict(
                 hidden_states=hidden_states,
                 target_hidden_states=target_hidden_states,
                 attention_mask=attention_mask,
@@ -405,6 +407,12 @@ class Qwen3_5DSparkModel(Qwen3_5PreTrainedModel):
                 position_embeddings=position_embeddings,
                 **kwargs,
             )
+            if self.gradient_checkpointing and self.training:
+                hidden_states = torch.utils.checkpoint.checkpoint(
+                    layer, use_reentrant=False, **layer_kwargs
+                )
+            else:
+                hidden_states = layer(**layer_kwargs)
         return self.norm(hidden_states)
 
     def forward(
