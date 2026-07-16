@@ -1,0 +1,423 @@
+{
+  "seed": 0,
+  "split": "validation",
+  "sample_count": 50,
+  "prefixes_classified": 5666,
+  "records": [
+    {
+      "id": "qi_01070",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 9,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "qi_00627",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 11,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "vm_00037",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 8,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "4866bfc8",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "vm_00418",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 11,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "vm_00653",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 8,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "5205cbb3",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "05c6fb62",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "d8eaea77",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "qi_00142",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 7,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "a5d1e316",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "106332b2",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_free": 7,
+        "tool_skeleton": 111
+      }
+    },
+    {
+      "id": "vm_00261",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 8,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "qi_00763",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 8,
+        "tool_free": 5,
+        "tool_skeleton": 126
+      }
+    },
+    {
+      "id": "35fd455c",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "6696f028",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "fd622ef7",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_free": 8,
+        "tool_skeleton": 111
+      }
+    },
+    {
+      "id": "afdc5c93",
+      "tool_calls": 0,
+      "prefix_region_counts": {}
+    },
+    {
+      "id": "5908c434",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "cc9e611f",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 24,
+        "tool_skeleton": 109
+      }
+    },
+    {
+      "id": "qi_00819",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 14,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "745e2a72",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "2b86406c",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 10,
+        "tool_free": 5,
+        "tool_skeleton": 127
+      }
+    },
+    {
+      "id": "5b6afbd1",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "9e9cab80",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "qi_00467",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 17,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "c6ee542b",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "qi_01067",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 9,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "62f3fcfc",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 13,
+        "tool_skeleton": 110
+      }
+    },
+    {
+      "id": "90207882",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "b54a4a0f",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_free": 4,
+        "tool_skeleton": 123
+      }
+    },
+    {
+      "id": "a0ea1fab",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_free": 19,
+        "tool_skeleton": 110
+      }
+    },
+    {
+      "id": "vm_00513",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 10,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "qi_00515",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 9,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "47a15274",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "120f3a2f",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "d6bedcf4",
+      "tool_calls": 0,
+      "prefix_region_counts": {}
+    },
+    {
+      "id": "4ccf89cb",
+      "tool_calls": 0,
+      "prefix_region_counts": {}
+    },
+    {
+      "id": "qi_01109",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 9,
+        "tool_free": 5,
+        "tool_skeleton": 134
+      }
+    },
+    {
+      "id": "vm_00155",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 8,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "vm_00738",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 8,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "349d77f8",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "607803ce",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "55ad85bf",
+      "tool_calls": 0,
+      "prefix_region_counts": {}
+    },
+    {
+      "id": "vm_00318",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 11,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "aa91277c",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_skeleton": 95
+      }
+    },
+    {
+      "id": "58009147",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 15,
+        "tool_skeleton": 112
+      }
+    },
+    {
+      "id": "97a9e3a6",
+      "tool_calls": 0,
+      "prefix_region_counts": {}
+    },
+    {
+      "id": "vm_00652",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 8,
+        "tool_skeleton": 116
+      }
+    },
+    {
+      "id": "vm_00423",
+      "tool_calls": 1,
+      "prefix_region_counts": {
+        "nl": 12,
+        "tool_enum": 11,
+        "tool_skeleton": 116
+      }
+    }
+  ]
+}
