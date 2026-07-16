@@ -1,0 +1,7 @@
+# Global speculative-decoding baseline; no content-aware segmentation.
+runtime: prior_art_carrier
+proposal:
+  block_size: 8
+  confidence_threshold: 0.4
+  mode: free
+  allowed_strings: null

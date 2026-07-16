@@ -1,0 +1,21 @@
+{
+  "split": "test",
+  "verify_mode": "mock_gold_next_token",
+  "note": "Gold next characters are accepted deterministically; these values verify routing and are not model quality or throughput metrics.",
+  "samples_evaluated": 20,
+  "baseline": {
+    "accepted_characters": 2264,
+    "proposal_blocks": 295,
+    "mode_blocks": {
+      "free": 295
+    }
+  },
+  "cas": {
+    "accepted_characters": 2264,
+    "proposal_blocks": 178,
+    "mode_blocks": {
+      "free": 92,
+      "template": 86
+    }
+  }
+}

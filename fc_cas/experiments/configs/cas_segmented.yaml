@@ -1,0 +1,4 @@
+# Content-aware proposal settings selected by fc_cas.strategy.DEFAULT_TABLE.
+runtime: prior_art_carrier
+segmenter: fc_cas.segmenter.classify_prefix
+strategy_table: fc_cas.strategy.StrategyTable
