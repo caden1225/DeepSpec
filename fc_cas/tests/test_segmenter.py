@@ -18,6 +18,16 @@ def _ota_sample():
     raise AssertionError("no ota_update tool_call")
 
 
+def _function_with_property_type(prop_type):
+    for ex in json.loads(DATA.read_text()):
+        for tool in ex["tools"]:
+            fn = tool.get("function", {})
+            for key, schema in (fn.get("parameters", {}).get("properties", {})).items():
+                if schema.get("type") == prop_type:
+                    return ex, fn["name"], key
+    raise AssertionError(f"no {prop_type} parameter fixture")
+
+
 def test_nl_without_tool_json():
     info = classify_prefix("抱歉，车机暂不支持此功能。", tools=[], active_fn=None)
     assert info.region == Region.NL
@@ -49,6 +59,15 @@ def test_ota_update_serialized_prefix_regions():
         active_fn = None if label == "自然语言" else "ota_update"
         info = classify_prefix(prefix, tools=ex["tools"], active_fn=active_fn)
         assert info.region == expected_region
+        if label == "枚举值":
+            assert info.allowed_strings == (
+                "check_update",
+                "download_update",
+                "install_update",
+                "schedule_update",
+                "view_changelog",
+            )
+            assert info.json_pointer == "/arguments/action"
 
 
 def test_ota_update_free_value_region():
@@ -60,3 +79,36 @@ def test_ota_update_free_value_region():
     info = classify_prefix(prefix, tools=ex["tools"], active_fn=tc["function"]["name"])
     assert info.region == Region.TOOL_FREE
     assert info.json_pointer == "/arguments/schedule_time"
+
+
+def test_unfinished_nested_array_and_object_values_are_free():
+    array_ex, array_fn, array_key = _function_with_property_type("array")
+    array_prefix = (
+        f'{{"tool_calls":[{{"function":{{"name":"{array_fn}",'
+        f'"arguments":{{"{array_key}":["first",'
+    )
+    array_info = classify_prefix(array_prefix, tools=array_ex["tools"], active_fn=array_fn)
+    assert array_info.region == Region.TOOL_FREE
+    assert array_info.json_pointer == f"/arguments/{array_key}"
+
+    object_fn = "object_tool"
+    object_key = "config"
+    object_tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": object_fn,
+                "parameters": {
+                    "type": "object",
+                    "properties": {object_key: {"type": "object"}},
+                },
+            },
+        }
+    ]
+    object_prefix = (
+        f'{{"tool_calls":[{{"function":{{"name":"{object_fn}",'
+        f'"arguments":{{"{object_key}":{{"nested":"value",'
+    )
+    object_info = classify_prefix(object_prefix, tools=object_tools, active_fn=object_fn)
+    assert object_info.region == Region.TOOL_FREE
+    assert object_info.json_pointer == f"/arguments/{object_key}"

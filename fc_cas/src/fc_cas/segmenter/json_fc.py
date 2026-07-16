@@ -103,10 +103,10 @@ def _scan_arguments_object(fragment: str) -> tuple[str | None, bool, bool]:
                 return key, True, False
             pos = _skip_whitespace(fragment, value_end)
         else:
-            value_end = pos
-            while value_end < length and fragment[value_end] not in ",}":
-                value_end += 1
+            value_end = _json_value_end(fragment, pos)
             if value_end == length:
+                return key, True, False
+            if value_end is None:
                 return key, True, False
             pos = _skip_whitespace(fragment, value_end)
 
@@ -134,5 +134,35 @@ def _json_string_end(text: str, start: int) -> int | None:
             escaped = True
         elif char == '"':
             return pos + 1
+        pos += 1
+    return None
+
+
+def _json_value_end(text: str, start: int) -> int | None:
+    """Return the end of a JSON value, or None while it remains incomplete."""
+    if text[start] not in "[{":
+        pos = start
+        while pos < len(text) and text[pos] not in ",}":
+            pos += 1
+        return pos if pos < len(text) else None
+
+    stack = [text[start]]
+    pos = start + 1
+    while pos < len(text):
+        char = text[pos]
+        if char == '"':
+            pos = _json_string_end(text, pos)
+            if pos is None:
+                return None
+            continue
+        if char in "[{":
+            stack.append(char)
+        elif char in "]}":
+            expected = "{" if char == "}" else "["
+            if not stack or stack[-1] != expected:
+                return None
+            stack.pop()
+            if not stack:
+                return pos + 1
         pos += 1
     return None
