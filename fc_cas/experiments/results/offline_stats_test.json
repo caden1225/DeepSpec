@@ -1,0 +1,24 @@
+{
+  "split": "test",
+  "approximation": "Character-level: each serialized character is labeled from its inclusive prefix; this is not tokenizer-token coverage.",
+  "assistant_sample_counts": {
+    "nl": 173,
+    "tool": 818
+  },
+  "assistant_samples_total": 991,
+  "total_serialized_chars": 109625,
+  "region_char_counts": {
+    "nl": 15085,
+    "tool_skeleton": 87801,
+    "tool_enum": 6203,
+    "tool_free": 536
+  },
+  "region_char_shares": {
+    "nl": 0.1376054732041049,
+    "tool_skeleton": 0.800921322690992,
+    "tool_enum": 0.05658380843785633,
+    "tool_free": 0.004889395667046751
+  },
+  "template_enum_coverable_chars": 94004,
+  "template_enum_coverable_char_share": 0.8575051311288483
+}
