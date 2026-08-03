@@ -13,6 +13,7 @@ from fc_cas.schema.guard import enum_allowed
 from fc_cas.types import Region, SegmentInfo
 
 _TOOL_HINT = re.compile(r'"tool_calls"|"function"|"arguments"')
+_QWEN_HINT = re.compile(r"<tool_call>|<function=|<parameter=")
 
 
 def classify_prefix(
@@ -20,7 +21,14 @@ def classify_prefix(
     tools: list[dict[str, Any]],
     active_fn: str | None = None,
 ) -> SegmentInfo:
-    if not text or not _TOOL_HINT.search(text):
+    if not text:
+        return SegmentInfo(region=Region.NL)
+
+    # Qwen3.5 chat_template emits XML-style tool calls; check first.
+    if _QWEN_HINT.search(text):
+        return _classify_qwen_xml(text, tools, active_fn)
+
+    if not _TOOL_HINT.search(text):
         return SegmentInfo(region=Region.NL)
 
     fn_name = active_fn or _infer_fn_name(text)
@@ -41,6 +49,38 @@ def classify_prefix(
         return SegmentInfo(region=Region.TOOL_SKELETON, json_pointer="/arguments")
 
     return SegmentInfo(region=Region.TOOL_SKELETON, json_pointer="/")
+
+
+def _classify_qwen_xml(
+    text: str,
+    tools: list[dict[str, Any]],
+    active_fn: str | None,
+) -> SegmentInfo:
+    """Classify Qwen XML tool_call / function / parameter markup."""
+    fn_name = active_fn
+    m_fn = re.search(r"<function=([^>]+)>", text)
+    if m_fn:
+        fn_name = m_fn.group(1)
+
+    open_params = list(re.finditer(r"<parameter=([^>]+)>\s*", text))
+    if open_params:
+        last = open_params[-1]
+        key = last.group(1)
+        after = text[last.end() :]
+        if "</parameter>" not in after:
+            allowed = enum_allowed(tools, fn_name, key) if fn_name else None
+            if allowed:
+                return SegmentInfo(
+                    region=Region.TOOL_ENUM,
+                    allowed_strings=tuple(allowed),
+                    json_pointer=f"/parameter/{key}",
+                )
+            return SegmentInfo(
+                region=Region.TOOL_FREE,
+                json_pointer=f"/parameter/{key}",
+            )
+
+    return SegmentInfo(region=Region.TOOL_SKELETON, json_pointer="/tool_call")
 
 
 def _infer_fn_name(text: str) -> str | None:

@@ -1,8 +1,8 @@
-# 发明专利申请文件（修订稿 v3）
+# 发明专利申请文件（修订稿 v2）
 
 > **申请人**：郑冬  
 > **发明人**：郑冬（待确认是否另有共同发明人）  
-> **状态**：方法稿与 FC-CAS CPU 实现一致；离线字符级统计已回填，在线 \(\tau\) 与 Speedup 待真实目标/草稿模型实验补充。
+> **状态**：方法稿已按 `processed_FC_dataset` 定稿；实验数据占位，可后补  
 > **保护重心（已择定）**：  
 > 1. **主保护**：面向标准 JSON Function Call 序列化输出的**区段感知投机调度**（NL ↔ TOOL 差异化策略）；  
 > 2. **强化从属**：基于 JSON Schema / OpenAI tools 定义的**参数槽位约束草稿**（枚举强制、骨架模板注入、自由字符串槽位模型草稿）；  
@@ -81,19 +81,17 @@
 1. 将投机调度从「全局超参」提升为「与标准 FC 协议对齐的区段调度」，结构性吃满低熵 JSON 加速红利；  
 2. 借助 tools Schema，在枚举槽位显著提高草稿命中率，缩短舱内时延；  
 3. 与置信度头兼容，形成「区段基线 + token 级截断」两级自适应；  
-4. 不改变目标模型验证角色时，可保持与目标模型验证机制相容的无损加速路径。
+4. 不改变目标模型验证角色时，可保持与目标分布一致的无损加速路径。
 
 ---
 
 ### 附图说明
 
-附图 Mermaid 源文件位于 `fc_cas/docs/figures/`；导出 PNG/SVG 方法见同目录 [`README.md`](../figures/README.md)。
-
-- **图 1**（[`fig1_architecture.md`](../figures/fig1_architecture.md)）：系统架构——输入 `messages + tools` 经 FC 区段识别器（Segmenter）、策略调度器（StrategyTable）、Schema 约束器（SchemaGuard）至草稿模块 M_p 与目标模型 M_q 验证器，形成闭环调度。  
-- **图 2**（[`fig2_state_machine.md`](../figures/fig2_state_machine.md)）：标准 JSON Function Call 区段状态机——NL / TOOL_SKELETON / TOOL_ENUM / TOOL_FREE（可选 TOOL_RESULT）及各区段差异化策略参数。  
-- **图 3**（[`fig3_sequence.md`](../figures/fig3_sequence.md)）：单轮「用户 → assistant.tool_calls → tool 回传」下的分区投机解码时序图。  
-- **图 4**（[`fig4_schema_guard.md`](../figures/fig4_schema_guard.md)）：基于 tools JSON Schema 的参数槽位约束草稿示意图（模板注入 / 枚举掩码 / 自由槽位）。  
-- **图 5**：评测曲线占位（全局策略 vs 区段策略；待补实验数据后添加 `fig5_eval_curve.md`）
+- **图 1**：系统架构（目标模型、草稿模块、FC 区段识别器、策略调度器、Schema 约束器、验证器）  
+- **图 2**：标准 JSON Function Call 区段状态机（NL / TOOL_SKELETON / TOOL_ENUM / TOOL_FREE）  
+- **图 3**：单轮「用户 → assistant.tool_calls → tool 回传」下的分区投机时序图  
+- **图 4**：基于 tools Schema 的参数槽位约束草稿示意图  
+- **图 5**：评测曲线占位（全局策略 vs 区段策略；待补实验数据）
 
 ---
 
@@ -148,7 +146,7 @@
 
 当区段为 `TOOL_SKELETON` 时：对确定性片段（结构符号、Schema 键名、必需的 JSON 标点）优先**模板注入**，减少模型采样步。
 
-当区段为 `TOOL_ENUM` 时：将采样空间限制为该字段 enum 集合（例如 `"check_update"`、`"play_song"`），以降低草稿在枚举取值上的无效候选概率。
+当区段为 `TOOL_ENUM` 时：将采样空间限制为该字段 enum 集合（非法 token logits 置为极小值），草稿几乎必然命中短枚举值（例如 `"check_update"`、`"play_song"`）。
 
 当区段为 `TOOL_FREE` 时：回退普通草稿，并可适当减小 \(B(r)\) 或提高 \(\theta(r)\)。
 
@@ -162,22 +160,24 @@
 3. 抽取目标模型指定层隐藏状态形成 target cache；  
 4. 按块级并行目标训练草稿模型（可复用公开的块草稿训练框架作为实现载体，本专利不主张该训练框架本身）。
 
-**离线实施例数据**
-以 test 划分的 991 条 assistant 序列进行字符级区段统计：序列化字符总数为 109,625；其中 `TOOL_SKELETON` 为 87,801 字符（80.09%），`TOOL_ENUM` 为 6,203 字符（5.66%），二者合计 94,004 字符（85.75%）。该统计按每一序列化字符的包含式前缀调用区段分类器得到，是模板/枚举覆盖潜力的字符级近似，不等同于 tokenizer token 占比，也不表示在线接受长度或加速比。
+**评测（待补数值）**  
+在 test 划分上对比：
 
-**在线评测（tools-aware，Qwen3.5-4B + 领域草稿 step_60）**
+- 基线 A：全局固定 \(B,\theta\) 的投机解码；  
+- 基线 B：仅置信度截断、无区段策略；  
+- 本发明：区段策略 ± Schema 约束。
 
-协议：`apply_chat_template(..., tools=)` 注入候选工具 Schema（对齐座舱 FC 部署）；生成侧为 Qwen XML `<tool_call>`；因 Qwen3.5 hybrid attention 下块验证非无损，采用逐 token 目标验证以保证 greedy 等价。对比条件：无 tools 全局、tools 全局、tools 区段（按 Region 调度 block_size）。test 前 30 条：
+指标建议：
 
-| 条件 | \(\tau\) | tool_call 解析率 | 工具名匹配率 |
-|------|--------:|----------------:|-------------:|
-| 无 tools / 全局 | 1.021 | 0% | 0% |
-| tools / 全局 | 1.302 | 96.7% | 83.3% |
-| tools / 区段 | 1.302 | 96.7% | 83.3% |
+| 指标 | 含义 |
+|------|------|
+| \(\tau\) | 平均接受长度 |
+| \(\tau_{\text{NL}},\tau_{\text{TOOL}}\) | 分区域接受长度 |
+| Speedup | 相对自回归的加速比 |
+| P50/P99 时延 | 舱内体验相关 |
+| 工具名 / 参数准确率 | 确认无损验证下任务正确性不变 |
 
-区段策略下分区接受长度：\(\tau_{\text{ENUM}}=1.395\)，\(\tau_{\text{FREE}}=1.362\)，\(\tau_{\text{SKELETON}}=1.272\)，\(\tau_{\text{NL}}=1.059\)。整体 \(\tau\) 与全局接近，因本草稿 `block_size=7` 已封顶 TOOL 区段；分区单调性支持内容感知调度。wall-clock Speedup / Schema 在线掩码仍待补。原始数据见 `fc_cas/experiments/results/tools_aware_compare.json`。
-
-CPU mock 对照（路由验证）：20 条 test 样本中，基线与区段策略均按 gold 下一字符确定性接受 2,264 个字符；区段策略产生 178 个 proposal blocks（其中 template 86 个），基线为 295 个 free blocks。该 mock 不是模型质量或吞吐指标。
+申请人声明：本申请提交时可无完整实验数值；获授权过程中或分案/补正时可依据同一 `processed_FC_dataset` 协议补强实施例数据。
 
 #### 实施例 4：装置与设备
 
@@ -247,6 +247,32 @@ CPU mock 对照（路由验证）：20 条 test 样本中，基线与区段策�
 
 ## 摘要
 
-本发明公开一种面向标准 JSON Function Call 的区段感知投机解码方法及装置。该方法在解码过程中识别自然语言回复区段与工具调用结构化区段，并按区段差异化配置草稿长度与置信度阈值；进一步可结合 tools 的 JSON Schema，对 JSON 骨架与枚举参数分别进行模板注入与枚举约束采样，再由目标模型验证接受。本发明适用于车载座舱等 Function Call 密集场景的结构化输出投机解码。
+本发明公开一种面向标准 JSON Function Call 的区段感知投机解码方法及装置。该方法在解码过程中识别自然语言回复区段与工具调用结构化区段，并按区段差异化配置草稿长度与置信度阈值；进一步可结合 tools 的 JSON Schema，对 JSON 骨架与枚举参数分别进行模板注入与枚举约束采样，再由目标模型验证接受。本发明适用于车载座舱等 Function Call 密集场景，能够提升结构化输出区段的接受长度与推理加速比。
 
 申请人：郑冬
+
+---
+
+## 内部设计备忘（勿提交专利局）
+
+### 为何如此切保护重心
+
+| 选项 | 评价 | 结论 |
+|------|------|------|
+| 仅「分区 block/阈值」 | 有新意，但易被「自适应阈值」类公开技术靠近 | 作独立权利要求主干，必须写清「针对 FC 区段且 TOOL 更激进」 |
+| 仅「schema 约束解码」 | 约束解码本身已有较多公开 | 不单独作最独权，作从属强化 |
+| **区段调度 + Schema 槽位分化（骨架/枚举/自由）** | 与 `processed_FC_dataset` 高度同构：tc_only 为主、enum 密集、arguments 短 | **采纳为保护组合** |
+
+### 数据集支撑点（评测可直接用）
+
+- 规模：train 7105 / val 875 / test 917（总计 8897）  
+- assistant 模式：tc_only 为主，另有 NL 拒识等，天然适合分区域统计 \(\tau_{\text{NL}}\) vs \(\tau_{\text{TOOL}}\)  
+- 35 个座舱工具；每轮 3～5 候选 tools；arguments 长度中位约 26 字符 → 骨架+枚举加速收益预期高  
+- 标准字段：`messages` + `tools` + `tool_calls` + `function.arguments` 字符串
+
+### 后续补实验时建议最小对照
+
+1. 全局 DSpark 式固定策略；  
+2. 本发明：仅 NL/TOOL 两区调度；  
+3. 本发明 + enum/骨架约束。  
+先报 test 集 \(\tau\) 与 wall-clock speedup，再补 P99。

@@ -24,9 +24,16 @@ NUM_ANCHORS=${NUM_ANCHORS:-64}
 GLOBAL_BATCH_SIZE=${GLOBAL_BATCH_SIZE:-32}
 LOCAL_BATCH_SIZE=${LOCAL_BATCH_SIZE:-1}
 TORCH_COMPILE=${TORCH_COMPILE:-false}
-PYTHON_BIN=${PYTHON_BIN:-python}
+PYTHON_BIN=${PYTHON_BIN:-/home/caden/anaconda3/envs/train/bin/python}
+
+if [[ ! -x "${PYTHON_BIN}" ]]; then
+    echo "ERROR: Python not found: ${PYTHON_BIN}" >&2
+    echo "Set PYTHON_BIN to a conda env with requirements.txt installed." >&2
+    exit 1
+fi
 
 echo "Training with:"
+echo "  PYTHON_BIN=${PYTHON_BIN}"
 echo "  target_cache_dir=${target_cache_dir}"
 echo "  NUM_ANCHORS=${NUM_ANCHORS}"
 echo "  GLOBAL_BATCH_SIZE=${GLOBAL_BATCH_SIZE}"

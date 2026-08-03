@@ -81,6 +81,25 @@ def test_ota_update_free_value_region():
     assert info.json_pointer == "/arguments/schedule_time"
 
 
+def test_qwen_xml_tool_call_regions():
+    ex, tc = _ota_sample()
+    tools = ex["tools"]
+    assert classify_prefix("先查一下", tools=tools).region == Region.NL
+    sk = classify_prefix("<tool_call>\n<function=ota_update>\n", tools=tools)
+    assert sk.region == Region.TOOL_SKELETON
+    enum_p = classify_prefix(
+        "<tool_call>\n<function=ota_update>\n<parameter=action>\ncheck",
+        tools=tools,
+    )
+    assert enum_p.region == Region.TOOL_ENUM
+    assert "check_update" in (enum_p.allowed_strings or ())
+    free_p = classify_prefix(
+        "<tool_call>\n<function=ota_update>\n<parameter=schedule_time>\n2026",
+        tools=tools,
+    )
+    assert free_p.region == Region.TOOL_FREE
+
+
 def test_unfinished_nested_array_and_object_values_are_free():
     array_ex, array_fn, array_key = _function_with_property_type("array")
     array_prefix = (

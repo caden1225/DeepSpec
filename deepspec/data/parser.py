@@ -69,6 +69,8 @@ class GeneralParser:
         self,
         conversation,
         max_length,
+        tools=None,
+        enable_thinking: bool | None = False,
     ):
         messages = []
         if conversation[0]["role"] == "system":
@@ -78,7 +80,9 @@ class GeneralParser:
             )
             messages.append({"role": "system", "content": conversation[0]["content"]})
             conversation = conversation[1:]
-        elif self.system_prompt:
+        elif self.system_prompt and not tools:
+            # When tools are provided, Qwen-style templates inject a tools system
+            # block; skip the generic default system prompt to avoid conflicts.
             messages.append({"role": "system", "content": self.system_prompt})
 
         for idx, sentence in enumerate(conversation):
@@ -98,6 +102,8 @@ class GeneralParser:
             self.tokenizer,
             render_messages,
             add_generation_prompt=False,
+            enable_thinking=enable_thinking,
+            tools=tools,
         )
 
         encoding = self.tokenizer(
@@ -170,6 +176,7 @@ def render_chat_messages(
     *,
     add_generation_prompt: bool,
     enable_thinking: bool | None = None,
+    tools: list | None = None,
 ) -> str:
     chat_kwargs = {
         "tokenize": False,
@@ -177,6 +184,8 @@ def render_chat_messages(
     }
     if enable_thinking is not None:
         chat_kwargs["enable_thinking"] = enable_thinking
+    if tools is not None:
+        chat_kwargs["tools"] = tools
     return tokenizer.apply_chat_template(messages, **chat_kwargs)
 
 
@@ -215,4 +224,6 @@ def preprocess_record(
     return parser.parse(
         record["conversations"],
         max_length=max_length,
+        tools=record.get("tools"),
+        enable_thinking=False,
     )

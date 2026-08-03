@@ -1,0 +1,79 @@
+{
+  "target": "/home/caden/models/Qwen3_5-4B",
+  "draft": "/home/caden/checkpoints/deepspec/dspark_fc_cas_qwen3_5_4b/step_60",
+  "limit": 30,
+  "cas_use_table_theta": false,
+  "verify_mode": "sequential_lossless_qwen3_5",
+  "note": "Tools-aware prompt: apply_chat_template(..., tools=). Qwen3.5 block verify is not lossless (hybrid attn); this run uses sequential per-token target verify. CAS default: block_size by Region with θ=0 (table θ via --cas-use-table-theta).",
+  "conditions": {
+    "no_tools_global": {
+      "use_tools": false,
+      "cas": false,
+      "samples": 30,
+      "mean_prompt_tokens": 16.4,
+      "proposals": 3438,
+      "accept_len_tau": 1.0209424083769634,
+      "mean_proposal_len": 7.0,
+      "verify_rate": 0.12761780104712042,
+      "tool_call_parse_rate": 0.0,
+      "tool_name_match_rate": 0.0,
+      "region_proposal_counts": {
+        "nl": 3438
+      },
+      "region_tau": {
+        "nl": 1.0209424083769634
+      },
+      "elapsed_sec": 74.79216924693901,
+      "tokens_per_sec_proxy": 46.93004675945607,
+      "example_generation": "您好！我目前无法直接更新或下载软件包，因为我没有访问您本地系统或网络环境的权限。不过，我可以为您提供以下帮助：\n\n1. **包管理器命令参考**  \n   - Ubuntu/Debian: `sudo apt update && sudo apt upgrade`  \n   - CentOS/RHEL: `sudo yum update` 或 `sudo dnf update`  \n   - macOS: `brew update` (Homebrew) 或 `softwareupdate`  \n   - Windows: 通过 Microsoft Store 或 PowerShell 命令 `winget upgrade`\n\n2. **手动下载指引**  \n   如果您需要下载"
+    },
+    "tools_global": {
+      "use_tools": true,
+      "cas": false,
+      "samples": 30,
+      "mean_prompt_tokens": 973.1333333333333,
+      "proposals": 934,
+      "accept_len_tau": 1.3019271948608138,
+      "mean_proposal_len": 7.0,
+      "verify_rate": 0.16274089935760172,
+      "tool_call_parse_rate": 0.9666666666666667,
+      "tool_name_match_rate": 0.8333333333333334,
+      "region_proposal_counts": {
+        "nl": 934
+      },
+      "region_tau": {
+        "nl": 1.3019271948608138
+      },
+      "elapsed_sec": 27.142395204980858,
+      "tokens_per_sec_proxy": 44.80076245359709,
+      "example_generation": "<tool_call>\n<function=ota_update>\n<parameter=action>\ndownload_update\n</parameter>\n</function>\n</tool_call><|im_end|>\n<|endoftext|>"
+    },
+    "tools_cas": {
+      "use_tools": true,
+      "cas": true,
+      "samples": 30,
+      "mean_prompt_tokens": 973.1333333333333,
+      "proposals": 934,
+      "accept_len_tau": 1.3019271948608138,
+      "mean_proposal_len": 6.945396145610278,
+      "verify_rate": 0.16385931815119256,
+      "tool_call_parse_rate": 0.9666666666666667,
+      "tool_name_match_rate": 0.8333333333333334,
+      "region_proposal_counts": {
+        "tool_skeleton": 628,
+        "tool_enum": 162,
+        "tool_free": 127,
+        "nl": 17
+      },
+      "region_tau": {
+        "tool_skeleton": 1.2722929936305734,
+        "tool_enum": 1.3950617283950617,
+        "tool_free": 1.3622047244094488,
+        "nl": 1.0588235294117647
+      },
+      "elapsed_sec": 27.659434810979292,
+      "tokens_per_sec_proxy": 43.96329889999466,
+      "example_generation": "<tool_call>\n<function=ota_update>\n<parameter=action>\ndownload_update\n</parameter>\n</function>\n</tool_call><|im_end|>\n<|endoftext|>"
+    }
+  }
+}

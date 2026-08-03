@@ -2,15 +2,16 @@
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| P0 工作区 | **done** | `fc_cas/` 已建；数据软链已修；专利稿已复制 |
-| P1 核心库 CPU (T1–T4) | **done** | 区段分类、策略表、Schema 守卫与运行时桥接已完成 |
-| P2 离线证据 (T5–T6) | **done** | test 字符级统计：template/enum 可覆盖 94,004 / 109,625 字符（85.75%） |
-| P3 在线对照 (T7) | **partial** | CPU mock 路由对照完成（20 条 test）；真实 \(\tau\)/Speedup 待座舱 target 与草稿权重 |
-| P4 领域训练 (T8) | **deferred** | 不阻塞最小专利申报路径 |
-| P5 专利定稿包 (T9) | **done** | v3 草稿、内部备忘分离、实施例数据、对照表及递交清单已更新 |
+| P0 工作区 | **done** | `fc_cas/` 已建 |
+| P1 核心库 CPU (T1–T4) | **done** | segmenter / strategy / schema / runtime |
+| P2 离线证据 (T5–T6) | **done** | test 可覆盖字符 **85.75%** |
+| P3 在线对照 (T7) | **done** | tools-aware 30 条：\(\tau=1.30\)；分区 \(\tau_{\text{ENUM}}=1.40>\tau_{\text{NL}}=1.06\) |
+| P4 领域训练 (T8) | **done** | 200 样本 cache + 60 step，loss≈2.45，ckpt `step_60` |
+| P5 专利定稿包 (T9) | **done** | 实施例已回填 tools-aware 数据 |
 
 ## 最近更新
 
-- 2026-07-16：创建工作区、DESIGN、PLAN；复制专利 v2；链到 `processed_FC_dataset`
-- 2026-07-16：完成 CPU 核心、离线统计及 CPU mock 路由对照；test 可覆盖字符占比为 85.75%
-- 2026-07-16：完成 T9 专利定稿包；真实在线实验与领域训练保留为后续工作
+- 2026-07-16：v1 尝试（B=16，1k 样本，200 step）→ tools \(\tau\)=2.10，ENUM/NL=2.22×；CAS≈全局
+- 理想画像：`fc_cas/docs/patent/理想实施例数据画像.md`
+- 结果：`tools_aware_compare_b16.json` / `tools_aware_compare_b16_casgap.json`
+- 下一步：Schema 在线约束冲 CAS>全局；注意根盘空间（ckpt 已迁 `/storage`）

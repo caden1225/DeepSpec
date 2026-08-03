@@ -1,0 +1,77 @@
+{
+  "experiment": "fc_cas_gpu_pipeline",
+  "date": "2026-07-16",
+  "target": "/home/caden/models/Qwen3_5-4B",
+  "draft": "/home/caden/checkpoints/deepspec/dspark_fc_cas_qwen3_5_4b/step_60",
+  "train": {
+    "samples": 200,
+    "steps": 60,
+    "final_loss": 2.4494,
+    "cache": "/storage/caden/deepspec/fc_cas_qwen3_5_4b_target_cache",
+    "env": "conda lf + CUDA_HOME=/home/caden/anaconda3/envs/lf"
+  },
+  "offline_stats_test": {
+    "assistant_samples_total": 991,
+    "total_serialized_chars": 109625,
+    "template_enum_coverable_char_share": 0.8575,
+    "region_char_shares": {
+      "nl": 0.1376,
+      "tool_skeleton": 0.8009,
+      "tool_enum": 0.0566,
+      "tool_free": 0.0049
+    }
+  },
+  "online_dspark_eval_fc_cockpit": {
+    "samples": 20,
+    "max_new_tokens": 128,
+    "confidence_threshold": 0.0,
+    "accept_len": 1.2,
+    "verify_rate": 0.1502,
+    "accept_rate@0": 0.2012,
+    "caveat": "Eval turns are user-only strings without tools= in chat template, so generation is not forced into JSON/tool_call format. This underestimates FC-CAS gains; treat as pipeline smoke test, not final τ."
+  },
+  "tools_aware_eval": {
+    "file": "experiments/results/tools_aware_compare.json",
+    "samples": 30,
+    "verify_mode": "sequential_lossless_qwen3_5",
+    "no_tools_global_tau": 1.021,
+    "tools_global_tau": 1.302,
+    "tools_cas_tau": 1.302,
+    "tool_call_parse_rate": 0.967,
+    "tool_name_match_rate": 0.833,
+    "region_tau_cas": {
+      "nl": 1.059,
+      "tool_skeleton": 1.272,
+      "tool_free": 1.362,
+      "tool_enum": 1.395
+    },
+    "note": "Cockpit-style tools= in apply_chat_template; Qwen XML tool_call. Block verify on Qwen3.5 is not lossless (hybrid attn); sequential per-token verify used. CAS varies block_size by Region (θ=0); draft B=7 caps TOOL blocks so overall τ≈global, but region τ shows ENUM>FREE>SKELETON>NL."
+  },
+  "tools_aware_eval_v1_b16": {
+    "draft": "/storage/caden/checkpoints/deepspec/dspark_fc_cas_qwen3_5_4b_b16/step_200",
+    "train_samples": 1000,
+    "train_steps": 200,
+    "final_loss": 1.99,
+    "block_size": 16,
+    "files": [
+      "experiments/results/tools_aware_compare_b16.json",
+      "experiments/results/tools_aware_compare_b16_casgap.json"
+    ],
+    "tools_global_B16_tau": 2.10,
+    "tools_global_B8_tau": 2.09,
+    "tools_cas_tau": 2.10,
+    "cas_vs_global_B8_pct": 0.3,
+    "region_tau_cas": {
+      "nl": 1.059,
+      "tool_skeleton": 2.048,
+      "tool_free": 2.171,
+      "tool_enum": 2.345
+    },
+    "enum_over_nl": 2.22,
+    "note": "Absolute τ and ENUM/NL ratio improved vs v0; overall CAS≈global until Schema or stronger long-prefix draft."
+  },
+  "mock_routing": {
+    "file": "experiments/results/compare_mock_test.json",
+    "note": "CPU gold-next-char routing: segmented uses fewer proposal blocks than global for same accepted characters."
+  }
+}

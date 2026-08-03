@@ -3,9 +3,15 @@ __pycache__
 .pytest_cache/
 .ipynb_checkpoints/
 train_datasets/
+processed_FC_dataset/
 logs/
+log
+nohup.out
+wandb/
+*.bak*
 *.png
 *.egg-info/
 build/
 dist/
 .DS_Store
+**/artifacts/*.log
